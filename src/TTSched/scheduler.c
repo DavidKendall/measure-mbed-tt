@@ -20,8 +20,24 @@ void schInit(void) {   // initialise the scheduler
   }
 }
 
+void schAddTask(               // add a task to the task set
+  pVoidFunc_t task,              // the task to add
+  uint32_t delay,                // the delay in ms
+  uint32_t period) {             // the period
+  
+  uint8_t i = 0;
+  
+  while (i < TT_SCHED_MAX_TASKS && schTasks[i].task != (pVoidFunc_t)0) {
+    i += 1;
+  }
+  assert(i < TT_SCHED_MAX_TASKS);
+  schTasks[i].task = task;
+  schTasks[i].delay = delay + 1;
+  schTasks[i].period = period;
+}
+
 void schStart(void) {           // start ticking
-  SysTick_Config(SystemCoreClock / TT_SCHED_TICK_HZ);
+  SysTick_Config((SystemCoreClock / TT_SCHED_TICK_HZ) - 1);
 }
 
 void schDispatch(void) {          // update after a tick -- ISR
@@ -45,22 +61,6 @@ void schDispatch(void) {          // update after a tick -- ISR
     // assert(!isUpdateNeeded);
   }
   schSleep();
-}
-
-void schAddTask(               // add a task to the task set
-  pVoidFunc_t task,              // the task to add
-  uint32_t delay,                // the delay in ms
-  uint32_t period) {             // the period
-  
-  uint8_t i = 0;
-  
-  while (i < TT_SCHED_MAX_TASKS && schTasks[i].task != (pVoidFunc_t)0) {
-    i += 1;
-  }
-  assert(i < TT_SCHED_MAX_TASKS);
-  schTasks[i].task = task;
-  schTasks[i].delay = delay + 1;
-  schTasks[i].period = period;
 }
 
 void schSleep(void) {         // go to sleep, if possible, to save power

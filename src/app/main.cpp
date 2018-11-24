@@ -15,6 +15,8 @@
 #include "MMA7660.h"
 #include "LM75B.h"
 #include <stdio.h>
+#include <assert.h>
+#include <MK64F12.h>
 
 static DigitalOut red(LED_RED);
 static DigitalOut green(LED_GREEN);
@@ -32,6 +34,7 @@ MMA7660 accel(D14, D15);
 float accelVal[3];
 LM75B temp(D14, D15);
 float tempVal;
+uint32_t timeElapsed;
 
 void samplePot(void);
 void sampleJoystick(void);
@@ -43,23 +46,41 @@ void updatePot(void);
 void updateJoystick(void);
 void updateAccel(void);
 void updateTemp(void);
+void counterInit(void);
+void counterStart(void);
+uint32_t counterStop(void);
+
+extern "C" {
+  void PIT1_IRQHandler(void);
+}
 
 int main () {
+  counterInit();
   red = 0;
   green = 1;
   led_app_red = 1;
+  timeElapsed = 0;
+  wait(0.5);
+  counterStart();
+  pot1Val = pot1.read();
+  //lcd.locate(2,8);
+  //lcd.printf("Hello world!\n", 0.66);
+  //wait(0.5);
+  timeElapsed = counterStop();
   lcd.cls();
+  lcd.locate(86, 8);
+  lcd.printf("%u", timeElapsed);
 
   schInit();
   schAddTask(samplePot, 0, 20);
-  schAddTask(sampleJoystick, 2, 10);
-  schAddTask(sampleAccel, 3, 20);
-  schAddTask(sampleTemp, 7, 100);
+  schAddTask(sampleJoystick, 0, 10);
+  schAddTask(sampleAccel, 0, 20);
+  schAddTask(sampleTemp, 0, 100);
   schAddTask(led1ToggleTask, 11, 50);
   schAddTask(led2ToggleTask, 61, 50);
-  schAddTask(updatePot, 1, 20);
-  schAddTask(updateJoystick, 3, 10);
-  schAddTask(updateAccel, 3, 20);
+  schAddTask(updatePot, 3, 20);
+  schAddTask(updateJoystick, 7, 10);
+  schAddTask(updateAccel, 11, 20);
   schAddTask(updateTemp, 13, 100);
 
   schStart();
@@ -130,3 +151,41 @@ void updateTemp(void) {
   lcd.printf("T: %02.2f", tempVal);
 }
 
+void counterInit(void) {
+    /* Open the clock gate to the PIT */
+    SIM->SCGC6 |= (1u << 23);
+    /* Enable the clock for the PIT timers. Continue to run in debug mode */
+    PIT->MCR = 0u;
+    /* Disable the timer */
+    PIT->CHANNEL[2].TCTRL &= ~PIT_TCTRL_TEN_MASK;
+    /* Period p = maximum available, bus clock f = 60 MHz, v = pf - 1 */ 
+    PIT->CHANNEL[2].LDVAL = 0xFFFFFFFF;
+    /* Enable interrupt on timeout */
+    PIT->CHANNEL[2].TCTRL |= PIT_TCTRL_TIE_MASK;
+    /* Enable the interrupt in the NVIC */
+    NVIC_EnableIRQ(PIT1_IRQn);
+}
+
+
+void counterStart(void) {
+    /* Start the timer running */
+    PIT->CHANNEL[2].TCTRL |= PIT_TCTRL_TEN_MASK;
+}
+
+uint32_t counterStop(void) {
+  uint32_t counter = 0;
+  
+  counter = 0XFFFFFFFF - PIT->CHANNEL[2].CVAL;  // get the value of the timer counter
+  /* Disable the timer */
+  PIT->CHANNEL[2].TCTRL &= ~PIT_TCTRL_TEN_MASK;
+  return counter;
+}
+
+extern "C" {
+void PIT1_IRQHandler(void) {
+    /* Clear the timer interrupt flag to allow further timer interrupts */
+    PIT->CHANNEL[2].TFLG |= PIT_TFLG_TIF_MASK;
+    /* We should never get here - timer overflow */
+    assert(false);
+}
+}
