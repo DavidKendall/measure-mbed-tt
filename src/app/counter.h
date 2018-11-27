@@ -10,7 +10,7 @@ extern "C" {
 void counterInit(void);
 void counterStart(void);
 uint32_t counterStop(void);
-void PIT1_IRQHandler(void);
+void PIT2_IRQHandler(void);
 
 #ifdef __cplusplus
 }

@@ -16,10 +16,12 @@ void counterInit(void) {
     PIT->CHANNEL[2].TCTRL &= ~PIT_TCTRL_TEN_MASK;
     /* Period p = maximum available, bus clock f = 60 MHz, v = pf - 1 */ 
     PIT->CHANNEL[2].LDVAL = 0xFFFFFFFF;
+    /* Clear the timer interrupt flag */
+    PIT->CHANNEL[2].TFLG |= PIT_TFLG_TIF_MASK;
     /* Enable interrupt on timeout */
     PIT->CHANNEL[2].TCTRL |= PIT_TCTRL_TIE_MASK;
     /* Enable the interrupt in the NVIC */
-    NVIC_EnableIRQ(PIT1_IRQn);
+    NVIC_EnableIRQ(PIT2_IRQn);
 }
 
 
@@ -38,8 +40,12 @@ uint32_t counterStop(void) {
   return counter;
 }
 
-void PIT1_IRQHandler(void) {
-    /* Clear the timer interrupt flag to allow further timer interrupts */
+void PIT2_IRQHandler(void) {
+    /* Disable the timer */
+    PIT->CHANNEL[2].TCTRL &= ~PIT_TCTRL_TEN_MASK;
+    /* Disable interrupt on timeout */
+    PIT->CHANNEL[2].TCTRL &= ~PIT_TCTRL_TIE_MASK;
+    /* Clear the timer interrupt flag */
     PIT->CHANNEL[2].TFLG |= PIT_TFLG_TIF_MASK;
     /* We should never get here - timer overflow */
     assert(false);

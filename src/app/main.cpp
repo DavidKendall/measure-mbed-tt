@@ -57,7 +57,11 @@ int main () {
   //pot1Val = pot1.read();
   lcd.locate(2,8);
   lcd.printf("Hello world!\n");
-  //wait(0.5);
+  /* Uncomment the next executable line to check that the interrupt handler is called
+   * if we try to measure the execution time of code
+   * that executes for too long
+   */ 
+  //wait(75);
   timeElapsed = counterStop();
   lcd.cls();
   lcd.locate(86, 8);
